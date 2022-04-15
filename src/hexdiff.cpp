@@ -27,7 +27,7 @@ using namespace std;
 static struct arguments arguments;
 
 const char *argp_program_version = "Hexdiff v0.2";
-const char *argp_program_bug_address = "jonata.pastro@unb.br";
+const char *argp_program_bug_address = "jonata.pastro@aluno.unb.br";
 
 void parseCli(struct arguments *arguments, int argc, char **argv) {
   argp_parse(&argp, argc, argv, 0, 0, arguments);
