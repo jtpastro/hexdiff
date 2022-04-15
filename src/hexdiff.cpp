@@ -1,6 +1,7 @@
 /*
  *  Main file
  *  Written by Curtis Li
+ *  Written by Jonata Pastro
  */
 
 #include <assert.h>
@@ -8,12 +9,11 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <stdlib.h>
+#include <argp.h>
 
 #include "hexdiff.h"
-#include "colours.h"
-#include "parsecli.h"
 
-#define DEBUG(a) 
 
 /**************************************************
  *                                                *
@@ -24,8 +24,36 @@
 using namespace std;
 
 
-static int rowCount = 0;
 static struct arguments arguments;
+
+const char *argp_program_version = "Hexdiff v0.2";
+const char *argp_program_bug_address = "jonata.pastro@unb.br";
+
+void parseCli(struct arguments *arguments, int argc, char **argv) {
+  argp_parse(&argp, argc, argv, 0, 0, arguments);
+}
+
+error_t parse_opt(int key, char *arg, struct argp_state *state) {
+  struct arguments *arguments =  (struct arguments *) state->input;
+  switch (key) { 
+    case ARGP_KEY_ARG:
+      if (!arguments->arg1) {
+        arguments->arg1 = arg;
+      } else if (!arguments->arg2) {
+        arguments->arg2 = arg;
+      }
+      break;
+    case ARGP_KEY_END:
+      if (state->arg_num < 2) {
+	argp_usage(state);
+      }
+      break;
+    default:
+      return ARGP_ERR_UNKNOWN;
+  }
+  return 0;
+}	
+
 
 /*
  *  Main function
@@ -51,7 +79,6 @@ int main(int argc, char** argv) {
   f2.seekg(0, f2.beg);
   gcsSol(&lookup, &f1, &f2);
   
-  if (rowCount != 0) cout << endl;
 
   // Clsoe the files
   f1.close();
@@ -126,18 +153,15 @@ void gcsSol(vector< vector<int> > *lookup, ifstream *f1, ifstream *f2) {
   int row = f1->tellg();
   int col = f2->tellg();
   char byte1, byte2;
-  DEBUG(cout << row << "-" << col << ": ");
 
   if (!f1->get(byte1) || !f2->get(byte2)) {
-    DEBUG(cout << "ERROR" << endl);
+    cout << "ERROR" << endl;
     return;
   }
 
   // Match
-  DEBUG(cout << byte1 << "-" << byte2 << ": ");
   if (byte1 == byte2) { 
-    DEBUG(cout << "MATCH" << endl);
-    fmtPrint(BLACK, byte2);
+    fmtPrint(WHITE, byte2, "== ");
     return gcsSol(lookup, f1, f2);
   }
   
@@ -146,17 +170,15 @@ void gcsSol(vector< vector<int> > *lookup, ifstream *f1, ifstream *f2) {
   bool colAtBase = col + 1 >= (*lookup)[row].size();
   if (rowAtBase || colAtBase) {
     if (rowAtBase && colAtBase) {
-      DEBUG(cout << lookup->size() << " " << (*lookup)[row].size() << ": ");
-      DEBUG(cout << "BASE" << endl);
+      cout << lookup->size() << " " << (*lookup)[row].size() << ": ";
+      cout << "BASE" << endl;
       return;
     } else if (rowAtBase) {
-      DEBUG(cout << "BASE RIGHT" << endl);
-      fmtPrint(RED, byte2);
+      fmtPrint(RED, byte2, "BASE RIGHT");
       f1->clear();
       f1->seekg(row);
     } else if (byte2) {
-      DEBUG(cout << "BASE DOWN" << endl);
-      fmtPrint(GREEN, byte1);
+      fmtPrint(GREEN, byte1, "BASE DOWN");
       f2->clear();
       f2->seekg(col);
     }
@@ -166,20 +188,16 @@ void gcsSol(vector< vector<int> > *lookup, ifstream *f1, ifstream *f2) {
   // Step case
   if ((*lookup)[row+1][col] > (*lookup)[row][col+1]) {
     // Go down
-    DEBUG(cout << "GO DOWN" << endl);
-    fmtPrint(GREEN, byte1);
+    fmtPrint(RED, byte1, "-- ");
     f2->seekg(col);
   } else {
     // Go right
-    DEBUG(cout << "GO RIGHT" << endl);
-    fmtPrint(RED, byte2);
+    fmtPrint(GREEN, byte2, "++ ");
     f1->seekg(row);
   }
   return gcsSol(lookup, f1, f2);
 }
 
-void fmtPrint(const char *colour, char c) {
-  cout << colour << hex(c) << " " << END;
-  rowCount = (rowCount + 1) % arguments.format;
-  if (rowCount == 0) cout << endl;
+void fmtPrint(const char *colour, char c, string operation) {
+  cout << colour << operation << hex(c) << " " << c << END << endl;
 }
